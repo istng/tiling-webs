@@ -25,9 +25,8 @@ body {
   align-items: center;
   padding: 0 12px;
   gap: 8px;
-  -webkit-app-region: drag; /* make toolbar draggable as window title bar */
+  -webkit-app-region: drag;
 }
-/* inputs/buttons inside must opt out of window dragging */
 #toolbar input,
 #toolbar button { -webkit-app-region: no-drag; }
 
@@ -67,6 +66,174 @@ body {
 }
 #open-btn:hover { background: #5a32a3; }
 
+#panel-btn {
+  background: transparent;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #8b949e;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: border-color .15s, color .15s;
+}
+#panel-btn:hover { border-color: #6e40c9; color: #a78bfa; }
+#panel-btn.active { border-color: #6e40c9; color: #a78bfa; background: #1a1228; }
+
+#panel-badge {
+  position: absolute;
+  top: -5px; right: -5px;
+  background: #6e40c9;
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  line-height: 1;
+}
+
+/* ── Window list panel ───────────────────────────────────── */
+#win-panel {
+  position: fixed;
+  left: 0;
+  top: 44px;
+  bottom: 0;
+  width: 256px;
+  background: #161b22;
+  border-right: 1px solid #30363d;
+  box-shadow: 6px 0 24px rgba(0,0,0,0.5);
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform .2s cubic-bezier(.4,0,.2,1);
+  overflow: hidden;
+}
+#win-panel.open { transform: translateX(0); }
+
+#panel-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px 10px 14px;
+  border-bottom: 1px solid #21262d;
+  flex-shrink: 0;
+  gap: 6px;
+}
+#panel-heading {
+  flex: 1;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+#panel-x {
+  background: transparent;
+  border: none;
+  color: #484f58;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+#panel-x:hover { color: #8b949e; background: #21262d; }
+
+#win-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: #30363d transparent;
+}
+#win-list::-webkit-scrollbar { width: 4px; }
+#win-list::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+
+#panel-empty {
+  color: #30363d;
+  font-size: 12px;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.pi {                          /* panel item */
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin-bottom: 2px;
+  transition: background .1s;
+}
+.pi:hover { background: #21262d; }
+.pi.active { background: #1a1228; border-color: #3d2a6b; }
+
+.pi-icon {
+  width: 16px; height: 16px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.pi-icon img { width: 16px; height: 16px; object-fit: contain; }
+
+.pi-info { flex: 1; min-width: 0; }
+.pi-title {
+  color: #c9d1d9;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+.pi-url {
+  color: #484f58;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.pi-close {
+  flex-shrink: 0;
+  width: 18px; height: 18px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: #484f58;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transition: opacity .1s, background .1s, color .1s;
+  line-height: 1;
+}
+.pi:hover .pi-close { opacity: 1; }
+.pi-close:hover { background: #f85149; color: #fff; opacity: 1; }
+
+/* click-outside scrim when panel is open */
+#panel-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+}
+#panel-scrim.on { display: block; }
+
 /* ── Desktop ─────────────────────────────────────────────── */
 #desktop {
   position: relative;
@@ -77,8 +244,6 @@ body {
   background-size: 28px 28px;
 }
 
-/* Transparent shield placed over everything during drag to prevent
-   webviews from swallowing mouse events */
 #drag-shield {
   display: none;
   position: absolute;
@@ -117,7 +282,6 @@ body {
   box-shadow: 0 0 0 1px #6e40c9, 0 12px 48px rgba(110,64,201,0.3);
 }
 
-/* Title bar */
 .fw-bar {
   display: flex;
   align-items: center;
@@ -147,14 +311,12 @@ body {
   border-radius: 4px;
   color: #484f58;
   font-size: 13px;
-  width: 22px;
-  height: 22px;
+  width: 22px; height: 22px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   transition: border-color .15s, color .15s;
-  padding: 0;
-  line-height: 1;
+  padding: 0; line-height: 1;
 }
 .fw-back:hover, .fw-fwd:hover { border-color: #6e40c9; color: #8b62d9; }
 
@@ -189,18 +351,12 @@ body {
 }
 .fw-newbtn:hover { border-color: #6e40c9; color: #8b62d9; }
 
-/* Webview */
-.fw webview {
-  flex: 1;
-  width: 100%;
-  min-height: 0;
-}
+.fw webview { flex: 1; width: 100%; min-height: 0; }
 
-/* Resize handles */
 .rz { position: absolute; z-index: 10; }
-.rz-e  { top: 36px; right: 0;  bottom: 12px; width: 5px;  cursor: e-resize; }
+.rz-e  { top: 36px; right: 0; bottom: 12px; width: 5px; cursor: e-resize; }
 .rz-s  { left: 12px; bottom: 0; right: 12px; height: 5px; cursor: s-resize; }
-.rz-se { right: 0;  bottom: 0; width: 16px; height: 16px; cursor: se-resize; }
+.rz-se { right: 0; bottom: 0; width: 16px; height: 16px; cursor: se-resize; }
 .rz-se::after {
   content: '';
   position: absolute;
@@ -211,7 +367,6 @@ body {
   border-radius: 0 0 2px 0;
 }
 
-/* ── Loading indicator ───────────────────────────────────── */
 .fw-loading {
   position: absolute;
   bottom: 0; left: 0; right: 0;
@@ -248,10 +403,28 @@ body {
 <body>
 
 <div id="toolbar">
+  <button id="panel-btn" title="All frames (⌘L)">
+    ≡
+    <span id="panel-badge"></span>
+  </button>
   <span id="logo">⊞</span>
   <input id="url-input" type="text" placeholder="Paste a URL and press Enter…"
          autocomplete="off" spellcheck="false" />
   <button id="open-btn">Open</button>
+</div>
+
+<!-- Click-outside scrim -->
+<div id="panel-scrim"></div>
+
+<!-- Window list panel -->
+<div id="win-panel">
+  <div id="panel-header">
+    <span id="panel-heading">Open frames</span>
+    <button id="panel-x" title="Close">✕</button>
+  </div>
+  <div id="win-list">
+    <div id="panel-empty">No frames open</div>
+  </div>
 </div>
 
 <div id="desktop">
@@ -266,7 +439,6 @@ body {
 <script>
 'use strict';
 
-// Intercept window.open at the shell level (same-origin popups from this page)
 const _nativeOpen = window.open.bind(window);
 window.open = (url, target, features) => {
   if (url && url !== 'about:blank' && !/^javascript:/i.test(url)) {
@@ -280,15 +452,108 @@ const snapPrev   = document.getElementById('snap-preview');
 const dragShield = document.getElementById('drag-shield');
 const urlInput   = document.getElementById('url-input');
 const emptyMsg   = document.getElementById('empty');
+const winList    = document.getElementById('win-list');
+const panelEl    = document.getElementById('win-panel');
+const panelScrim = document.getElementById('panel-scrim');
+const panelBadge = document.getElementById('panel-badge');
+const panelBtn   = document.getElementById('panel-btn');
 
 let zTop   = 100;
 let winSeq = 0;
 let drag   = null;
 let resize = null;
 
+// ── Per-window metadata (title, url, favicon) ────────────────
+const winMeta = new Map(); // id → { title, url, favicon }
+
+function shortHost(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch(_) { return url; }
+}
+
+function renderPanel() {
+  const wins = Array.from(desktop.querySelectorAll('.fw'));
+  const count = wins.length;
+
+  // Badge
+  if (count > 0) {
+    panelBadge.textContent = count;
+    panelBadge.style.display = 'flex';
+  } else {
+    panelBadge.style.display = 'none';
+  }
+
+  if (count === 0) {
+    winList.innerHTML = '<div id="panel-empty">No frames open</div>';
+    return;
+  }
+
+  winList.innerHTML = wins.map(win => {
+    const id     = win.id;
+    const meta   = winMeta.get(id) || {};
+    const title  = meta.title  || shortHost(meta.url || '') || 'Loading…';
+    const url    = meta.url    || '';
+    const fav    = meta.favicon || '';
+    const active = win.classList.contains('focused');
+
+    const icon = fav
+      ? `<img src="${esc(fav)}" width="16" height="16" onerror="this.replaceWith(document.createTextNode('🌐'))">`
+      : '🌐';
+
+    return `<div class="pi${active ? ' active' : ''}" data-focus="${id}">
+      <div class="pi-icon">${icon}</div>
+      <div class="pi-info">
+        <div class="pi-title">${esc(title)}</div>
+        <div class="pi-url">${esc(shortHost(url))}</div>
+      </div>
+      <button class="pi-close" data-close="${id}" title="Close">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ── Panel toggle ──────────────────────────────────────────────
+function openPanel()  {
+  panelEl.classList.add('open');
+  panelScrim.classList.add('on');
+  panelBtn.classList.add('active');
+  renderPanel();
+}
+function closePanel() {
+  panelEl.classList.remove('open');
+  panelScrim.classList.remove('on');
+  panelBtn.classList.remove('active');
+}
+function togglePanel() {
+  panelEl.classList.contains('open') ? closePanel() : openPanel();
+}
+
+panelBtn.addEventListener('click', togglePanel);
+document.getElementById('panel-x').addEventListener('click', closePanel);
+panelScrim.addEventListener('click', closePanel);
+
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'l') { e.preventDefault(); togglePanel(); }
+  if (e.key === 'Escape' && panelEl.classList.contains('open')) closePanel();
+});
+
+// Panel item clicks — focus or close
+winList.addEventListener('click', e => {
+  const closeId = e.target.dataset.close;
+  if (closeId) {
+    e.stopPropagation();
+    document.getElementById(closeId)?.remove();
+    winMeta.delete(closeId);
+    updateEmpty();
+    renderPanel();
+    return;
+  }
+  const focusId = e.target.closest('.pi')?.dataset.focus;
+  if (focusId) {
+    const win = document.getElementById(focusId);
+    if (win) { focusWin(win); closePanel(); }
+  }
+});
+
 // ── Smart snap ────────────────────────────────────────────────
-// Returns the best available snap rect given the current mouse position,
-// falling back to sub-quadrants when the primary tile is already occupied.
 const SNAP_T = 52;
 
 function smartSnap(mx, my, draggingWin) {
@@ -314,7 +579,6 @@ function smartSnap(mx, my, draggingWin) {
 
   const r = (x,y,w,h) => ({ x, y, w, h });
 
-  // Try in order; return first free rect
   function first(...rects) {
     for (const rc of rects)
       if (rc && free(rc.x, rc.y, rc.w, rc.h)) return rc;
@@ -327,21 +591,15 @@ function smartSnap(mx, my, draggingWin) {
   const th=r(0,  0,   W,  H/2), bh=r(0,  H/2, W,  H/2);
   const fs=r(0,  0,   W,  H);
 
-  // Full-screen: drag to top edge (centre strip only, avoid corner conflicts)
   if (ry < 4 && rx > T && rx < W-T)          return first(fs);
-
-  // Corners (checked before edges)
   if (rx < T   && ry < T)                     return first(tl);
   if (rx > W-T && ry < T)                     return first(tr);
   if (rx < T   && ry > H-T)                   return first(bl);
   if (rx > W-T && ry > H-T)                   return first(br);
-
-  // Edges — prefer full half; fall back to the closer/farther quarter
   if (rx < T)   return ry < H/2 ? first(lh,tl,bl) : first(lh,bl,tl);
   if (rx > W-T) return ry < H/2 ? first(rh,tr,br) : first(rh,br,tr);
   if (ry < T)   return rx < W/2 ? first(th,tl,tr) : first(th,tr,tl);
   if (ry > H-T) return rx < W/2 ? first(bh,bl,br) : first(bh,br,bl);
-
   return null;
 }
 
@@ -355,8 +613,7 @@ function normaliseUrl(raw) {
   raw = (raw || '').trim();
   if (!raw) return null;
   if (/^https?:\/\//i.test(raw)) return raw;
-  if (/^localhost(:\d+)?/.test(raw) || /^\d{1,3}\.\d{1,3}/.test(raw))
-    return 'http://' + raw;
+  if (/^localhost(:\d+)?/.test(raw) || /^\d{1,3}\.\d{1,3}/.test(raw)) return 'http://' + raw;
   return 'https://' + raw;
 }
 
@@ -364,7 +621,7 @@ function updateEmpty() {
   emptyMsg.classList.toggle('hidden', !!desktop.querySelector('.fw'));
 }
 
-// ── Spawn a floating frame window ─────────────────────────────
+// ── Spawn a floating frame ────────────────────────────────────
 function spawnWindow(url, opts = {}) {
   winSeq++;
   const id = 'fw' + winSeq;
@@ -400,30 +657,46 @@ function spawnWindow(url, opts = {}) {
   focusWin(el);
   updateEmpty();
 
+  // Seed metadata
+  winMeta.set(id, { title: shortHost(url) || url, url, favicon: '' });
+  renderPanel();
+
   const webview = el.querySelector('webview');
   const urlbar  = el.querySelector('.fw-urlbar');
-
-  // ── Webview events ─────────────────────────────────────────
 
   webview.addEventListener('did-start-loading', () => el.classList.add('loading'));
   webview.addEventListener('did-stop-loading',  () => el.classList.remove('loading'));
 
-  // Update URL bar after any navigation
-  const updateUrl = (e) => {
-    const u = e.url || webview.getURL();
-    if (u && u !== 'about:blank') urlbar.value = u;
+  const updateMeta = (e) => {
+    const m = winMeta.get(id) || {};
+    m.url = e.url || webview.getURL();
+    winMeta.set(id, m);
+    if (m.url && m.url !== 'about:blank') urlbar.value = m.url;
+    renderPanel();
   };
-  webview.addEventListener('did-navigate',         updateUrl);
-  webview.addEventListener('did-navigate-in-page', updateUrl);
+  webview.addEventListener('did-navigate',         updateMeta);
+  webview.addEventListener('did-navigate-in-page', updateMeta);
 
-  // Intercept new-window requests (window.open + target=_blank links)
-  // → open as a new floating frame instead of a real popup
+  webview.addEventListener('page-title-updated', (e) => {
+    const m = winMeta.get(id) || {};
+    m.title = e.title;
+    winMeta.set(id, m);
+    renderPanel();
+  });
+
+  webview.addEventListener('page-favicon-updated', (e) => {
+    const m = winMeta.get(id) || {};
+    m.favicon = e.favicons?.[0] || '';
+    winMeta.set(id, m);
+    renderPanel();
+  });
+
+  // new-window: open as new frame instead of popup
   webview.addEventListener('new-window', (e) => {
     if (e.url && !/^javascript:/i.test(e.url)) spawnWindow(e.url);
   });
 
-  // After DOM is ready, inject a Ctrl/Cmd+click handler so the user can
-  // open any link in a new frame by holding Ctrl/Cmd while clicking.
+  // Inject Ctrl/Cmd+click → open in new frame
   webview.addEventListener('dom-ready', () => {
     webview.executeJavaScript(`
       (function() {
@@ -433,15 +706,13 @@ function spawnWindow(url, opts = {}) {
           if (!e.ctrlKey && !e.metaKey) return;
           var a = e.target && e.target.closest && e.target.closest('a[href]');
           if (!a || !a.href || /^javascript:/i.test(a.href)) return;
-          e.preventDefault();
-          e.stopPropagation();
-          window.open(a.href);   // triggers new-window event → new frame
+          e.preventDefault(); e.stopPropagation();
+          window.open(a.href);
         }, true);
       })();
     `);
   });
 
-  // ── URL bar navigation ──────────────────────────────────────
   urlbar.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       const u = normaliseUrl(urlbar.value);
@@ -460,38 +731,33 @@ function focusWin(el) {
   desktop.querySelectorAll('.fw').forEach(w => w.classList.remove('focused'));
   el.classList.add('focused');
   el.style.zIndex = ++zTop;
+  renderPanel(); // update active highlight
 }
 
-// ── Block webviews during drag/resize ─────────────────────────
-// A transparent shield over the whole desktop prevents webviews from
-// capturing mouse events while the user is dragging.
 function blockWebviews(on) {
   dragShield.style.display = on ? 'block' : 'none';
 }
 
 // ── Delegated mousedown ───────────────────────────────────────
 desktop.addEventListener('mousedown', e => {
-  // Close
   const closeId = e.target.dataset.close;
   if (closeId) {
     document.getElementById(closeId)?.remove();
+    winMeta.delete(closeId);
     updateEmpty();
+    renderPanel();
     return;
   }
 
-  // Back / Forward
   if (e.target.dataset.back) {
-    const wv = document.querySelector(`[data-frame="${e.target.dataset.back}"]`);
-    wv?.goBack();
+    document.querySelector(`[data-frame="${e.target.dataset.back}"]`)?.goBack();
     return;
   }
   if (e.target.dataset.fwd) {
-    const wv = document.querySelector(`[data-frame="${e.target.dataset.fwd}"]`);
-    wv?.goForward();
+    document.querySelector(`[data-frame="${e.target.dataset.fwd}"]`)?.goForward();
     return;
   }
 
-  // ↗ new frame — clone current URL
   const popId = e.target.dataset.pop;
   if (popId) {
     const wv  = document.querySelector(`[data-frame="${popId}"]`);
@@ -501,7 +767,6 @@ desktop.addEventListener('mousedown', e => {
     return;
   }
 
-  // Drag start — title bar only, not on controls
   const bar = e.target.closest('.fw-bar');
   if (bar && e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
     const win = bar.closest('.fw');
@@ -512,7 +777,6 @@ desktop.addEventListener('mousedown', e => {
     return;
   }
 
-  // Resize handles
   if (e.target.dataset.rzSe) {
     const win = document.getElementById(e.target.dataset.rzSe);
     resize = { win, dir:'se', sx:e.clientX, sy:e.clientY, sw:win.offsetWidth, sh:win.offsetHeight };
@@ -529,25 +793,20 @@ desktop.addEventListener('mousedown', e => {
     blockWebviews(true); e.preventDefault(); return;
   }
 
-  // Click on window → focus
   const win = e.target.closest('.fw');
   if (win) focusWin(win);
 });
 
-// ── Mousemove ─────────────────────────────────────────────────
 document.addEventListener('mousemove', e => {
   if (drag) {
     const W = desktop.clientWidth, H = desktop.clientHeight;
-    const nx = Math.max(-drag.win.offsetWidth + 80, Math.min(W - 80, e.clientX - drag.ox));
-    const ny = Math.max(0, Math.min(H - 40, e.clientY - drag.oy));
-    drag.win.style.left = nx + 'px';
-    drag.win.style.top  = ny + 'px';
+    drag.win.style.left = Math.max(-drag.win.offsetWidth + 80, Math.min(W - 80, e.clientX - drag.ox)) + 'px';
+    drag.win.style.top  = Math.max(0, Math.min(H - 40, e.clientY - drag.oy)) + 'px';
 
     const s = smartSnap(e.clientX, e.clientY, drag.win);
     drag.snap = s;
     if (s) {
-      snapPrev.style.cssText =
-        `display:block;left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px;`;
+      snapPrev.style.cssText = `display:block;left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px;`;
     } else {
       snapPrev.style.display = 'none';
     }
@@ -556,24 +815,19 @@ document.addEventListener('mousemove', e => {
   if (resize) {
     const dx = e.clientX - (resize.sx || 0);
     const dy = e.clientY - (resize.sy || 0);
-    if (resize.dir === 'se' || resize.dir === 'e')
-      resize.win.style.width  = Math.max(280, resize.sw + dx) + 'px';
-    if (resize.dir === 'se' || resize.dir === 's')
-      resize.win.style.height = Math.max(180, resize.sh + dy) + 'px';
+    if (resize.dir === 'se' || resize.dir === 'e') resize.win.style.width  = Math.max(280, resize.sw + dx) + 'px';
+    if (resize.dir === 'se' || resize.dir === 's') resize.win.style.height = Math.max(180, resize.sh + dy) + 'px';
   }
 });
 
-// ── Mouseup ───────────────────────────────────────────────────
 document.addEventListener('mouseup', () => {
   if (drag) {
-    const { win, snap } = drag;
     snapPrev.style.display = 'none';
+    const { win, snap } = drag;
     if (snap) {
       win.style.transition = 'left .14s ease, top .14s ease, width .14s ease, height .14s ease';
-      win.style.left   = snap.x + 'px';
-      win.style.top    = snap.y + 'px';
-      win.style.width  = snap.w + 'px';
-      win.style.height = snap.h + 'px';
+      win.style.left = snap.x + 'px'; win.style.top    = snap.y + 'px';
+      win.style.width= snap.w + 'px'; win.style.height = snap.h + 'px';
       setTimeout(() => win.style.transition = '', 180);
     }
     drag = null;
