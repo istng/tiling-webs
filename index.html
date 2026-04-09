@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Frames</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0d1117;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────── */
+#toolbar {
+  position: relative;
+  z-index: 100000;
+  height: 44px;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  -webkit-app-region: drag; /* make toolbar draggable as window title bar */
+}
+/* inputs/buttons inside must opt out of window dragging */
+#toolbar input,
+#toolbar button { -webkit-app-region: no-drag; }
+
+#logo {
+  color: #6e40c9;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+#url-input {
+  flex: 1;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  padding: 6px 10px;
+  font-size: 13px;
+  outline: none;
+  min-width: 0;
+}
+#url-input:focus { border-color: #6e40c9; }
+#url-input::placeholder { color: #484f58; }
+
+#open-btn {
+  background: #6e40c9;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+#open-btn:hover { background: #5a32a3; }
+
+/* ── Desktop ─────────────────────────────────────────────── */
+#desktop {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 44px);
+  overflow: hidden;
+  background-image: radial-gradient(circle, #21262d 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Transparent shield placed over everything during drag to prevent
+   webviews from swallowing mouse events */
+#drag-shield {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 99997;
+  cursor: grabbing;
+}
+
+/* ── Snap preview ────────────────────────────────────────── */
+#snap-preview {
+  position: absolute;
+  background: rgba(110, 64, 201, 0.12);
+  border: 2px dashed rgba(110, 64, 201, 0.55);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 99998;
+  display: none;
+  transition: left .07s, top .07s, width .07s, height .07s;
+}
+
+/* ── Frame windows ───────────────────────────────────────── */
+.fw {
+  position: absolute;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.6);
+  min-width: 280px;
+  min-height: 180px;
+}
+.fw.focused {
+  border-color: #6e40c9;
+  box-shadow: 0 0 0 1px #6e40c9, 0 12px 48px rgba(110,64,201,0.3);
+}
+
+/* Title bar */
+.fw-bar {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  background: #0d1117;
+  padding: 0 8px;
+  gap: 7px;
+  cursor: move;
+  flex-shrink: 0;
+  border-bottom: 1px solid #21262d;
+}
+
+.fw-close {
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: #f85149;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity .15s;
+}
+.fw-close:hover { opacity: 0.7; }
+
+.fw-back, .fw-fwd {
+  background: transparent;
+  border: 1px solid #21262d;
+  border-radius: 4px;
+  color: #484f58;
+  font-size: 13px;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: border-color .15s, color .15s;
+  padding: 0;
+  line-height: 1;
+}
+.fw-back:hover, .fw-fwd:hover { border-color: #6e40c9; color: #8b62d9; }
+
+.fw-urlbar {
+  flex: 1;
+  background: #161b22;
+  border: 1px solid #21262d;
+  border-radius: 5px;
+  color: #8b949e;
+  font-size: 11px;
+  padding: 3px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  outline: none;
+  cursor: text;
+  min-width: 0;
+}
+.fw-urlbar:focus { border-color: #6e40c9; color: #e6edf3; background: #0d1117; }
+
+.fw-newbtn {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid #30363d;
+  border-radius: 5px;
+  color: #484f58;
+  font-size: 10px;
+  padding: 3px 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color .15s, color .15s;
+}
+.fw-newbtn:hover { border-color: #6e40c9; color: #8b62d9; }
+
+/* Webview */
+.fw webview {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+/* Resize handles */
+.rz { position: absolute; z-index: 10; }
+.rz-e  { top: 36px; right: 0;  bottom: 12px; width: 5px;  cursor: e-resize; }
+.rz-s  { left: 12px; bottom: 0; right: 12px; height: 5px; cursor: s-resize; }
+.rz-se { right: 0;  bottom: 0; width: 16px; height: 16px; cursor: se-resize; }
+.rz-se::after {
+  content: '';
+  position: absolute;
+  right: 4px; bottom: 4px;
+  width: 6px; height: 6px;
+  border-right: 2px solid #30363d;
+  border-bottom: 2px solid #30363d;
+  border-radius: 0 0 2px 0;
+}
+
+/* ── Loading indicator ───────────────────────────────────── */
+.fw-loading {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #6e40c9 0%, #a78bfa 50%, #6e40c9 100%);
+  background-size: 200% 100%;
+  animation: loading-bar 1.2s linear infinite;
+  z-index: 5;
+  display: none;
+}
+.fw.loading .fw-loading { display: block; }
+@keyframes loading-bar {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Empty state ─────────────────────────────────────────── */
+#empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  pointer-events: none;
+  transition: opacity .3s;
+}
+#empty.hidden { opacity: 0; }
+#empty h2 { color: #30363d; font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+#empty p  { color: #21262d; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <span id="logo">⊞</span>
+  <input id="url-input" type="text" placeholder="Paste a URL and press Enter…"
+         autocomplete="off" spellcheck="false" />
+  <button id="open-btn">Open</button>
+</div>
+
+<div id="desktop">
+  <div id="drag-shield"></div>
+  <div id="snap-preview"></div>
+  <div id="empty">
+    <h2>No frames open</h2>
+    <p>Enter a URL above to get started</p>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// Intercept window.open at the shell level (same-origin popups from this page)
+const _nativeOpen = window.open.bind(window);
+window.open = (url, target, features) => {
+  if (url && url !== 'about:blank' && !/^javascript:/i.test(url)) {
+    try { spawnWindow(new URL(url, location.href).href); return null; } catch(_) {}
+  }
+  return _nativeOpen(url, target, features);
+};
+
+const desktop    = document.getElementById('desktop');
+const snapPrev   = document.getElementById('snap-preview');
+const dragShield = document.getElementById('drag-shield');
+const urlInput   = document.getElementById('url-input');
+const emptyMsg   = document.getElementById('empty');
+
+let zTop   = 100;
+let winSeq = 0;
+let drag   = null;
+let resize = null;
+
+// ── Smart snap ────────────────────────────────────────────────
+// Returns the best available snap rect given the current mouse position,
+// falling back to sub-quadrants when the primary tile is already occupied.
+const SNAP_T = 52;
+
+function smartSnap(mx, my, draggingWin) {
+  const W = desktop.clientWidth, H = desktop.clientHeight;
+  const dr = desktop.getBoundingClientRect();
+  const rx = mx - dr.left, ry = my - dr.top;
+  const T  = SNAP_T;
+
+  const others = Array.from(desktop.querySelectorAll('.fw'))
+    .filter(w => w !== draggingWin)
+    .map(w => [w.offsetLeft, w.offsetTop,
+               w.offsetLeft + w.offsetWidth,
+               w.offsetTop  + w.offsetHeight]);
+
+  function free(x, y, w, h) {
+    const area = w * h;
+    return !others.some(([x1,y1,x2,y2]) => {
+      const ix = Math.max(0, Math.min(x2, x+w) - Math.max(x1, x));
+      const iy = Math.max(0, Math.min(y2, y+h) - Math.max(y1, y));
+      return (ix * iy) > area * 0.30;
+    });
+  }
+
+  const r = (x,y,w,h) => ({ x, y, w, h });
+
+  // Try in order; return first free rect
+  function first(...rects) {
+    for (const rc of rects)
+      if (rc && free(rc.x, rc.y, rc.w, rc.h)) return rc;
+    return null;
+  }
+
+  const tl=r(0,  0,   W/2,H/2), tr=r(W/2,0,   W/2,H/2);
+  const bl=r(0,  H/2, W/2,H/2), br=r(W/2,H/2, W/2,H/2);
+  const lh=r(0,  0,   W/2,H),   rh=r(W/2,0,   W/2,H);
+  const th=r(0,  0,   W,  H/2), bh=r(0,  H/2, W,  H/2);
+  const fs=r(0,  0,   W,  H);
+
+  // Full-screen: drag to top edge (centre strip only, avoid corner conflicts)
+  if (ry < 4 && rx > T && rx < W-T)          return first(fs);
+
+  // Corners (checked before edges)
+  if (rx < T   && ry < T)                     return first(tl);
+  if (rx > W-T && ry < T)                     return first(tr);
+  if (rx < T   && ry > H-T)                   return first(bl);
+  if (rx > W-T && ry > H-T)                   return first(br);
+
+  // Edges — prefer full half; fall back to the closer/farther quarter
+  if (rx < T)   return ry < H/2 ? first(lh,tl,bl) : first(lh,bl,tl);
+  if (rx > W-T) return ry < H/2 ? first(rh,tr,br) : first(rh,br,tr);
+  if (ry < T)   return rx < W/2 ? first(th,tl,tr) : first(th,tr,tl);
+  if (ry > H-T) return rx < W/2 ? first(bh,bl,br) : first(bh,br,bl);
+
+  return null;
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+                  .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function normaliseUrl(raw) {
+  raw = (raw || '').trim();
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (/^localhost(:\d+)?/.test(raw) || /^\d{1,3}\.\d{1,3}/.test(raw))
+    return 'http://' + raw;
+  return 'https://' + raw;
+}
+
+function updateEmpty() {
+  emptyMsg.classList.toggle('hidden', !!desktop.querySelector('.fw'));
+}
+
+// ── Spawn a floating frame window ─────────────────────────────
+function spawnWindow(url, opts = {}) {
+  winSeq++;
+  const id = 'fw' + winSeq;
+  const W  = desktop.clientWidth, H = desktop.clientHeight;
+  const defW = Math.round(Math.min(720, Math.max(400, W * 0.52)));
+  const defH = Math.round(Math.min(560, Math.max(280, H * 0.62)));
+  const step = ((winSeq - 1) % 7) * 26;
+  const left = opts.x != null ? opts.x : Math.min(step + 30, W - defW - 20);
+  const top  = opts.y != null ? opts.y : Math.min(step + 18, H - defH - 20);
+
+  const el = document.createElement('div');
+  el.className = 'fw focused';
+  el.id = id;
+  el.style.cssText = `left:${left}px;top:${top}px;width:${defW}px;height:${defH}px;z-index:${++zTop}`;
+
+  el.innerHTML = `
+    <div class="fw-bar">
+      <button class="fw-close"  data-close="${id}" title="Close"></button>
+      <button class="fw-back"   data-back="${id}"  title="Back">‹</button>
+      <button class="fw-fwd"    data-fwd="${id}"   title="Forward">›</button>
+      <input  class="fw-urlbar" type="text" value="${esc(url)}"
+              spellcheck="false" autocomplete="off" data-urlbar="${id}" />
+      <button class="fw-newbtn" data-pop="${id}" title="Open current URL in a new frame">↗ new frame</button>
+    </div>
+    <webview data-frame="${id}" src="${esc(url)}"></webview>
+    <div class="fw-loading"></div>
+    <div class="rz rz-e"  data-rz-e="${id}"></div>
+    <div class="rz rz-s"  data-rz-s="${id}"></div>
+    <div class="rz rz-se" data-rz-se="${id}"></div>
+  `;
+
+  desktop.appendChild(el);
+  focusWin(el);
+  updateEmpty();
+
+  const webview = el.querySelector('webview');
+  const urlbar  = el.querySelector('.fw-urlbar');
+
+  // ── Webview events ─────────────────────────────────────────
+
+  webview.addEventListener('did-start-loading', () => el.classList.add('loading'));
+  webview.addEventListener('did-stop-loading',  () => el.classList.remove('loading'));
+
+  // Update URL bar after any navigation
+  const updateUrl = (e) => {
+    const u = e.url || webview.getURL();
+    if (u && u !== 'about:blank') urlbar.value = u;
+  };
+  webview.addEventListener('did-navigate',         updateUrl);
+  webview.addEventListener('did-navigate-in-page', updateUrl);
+
+  // Intercept new-window requests (window.open + target=_blank links)
+  // → open as a new floating frame instead of a real popup
+  webview.addEventListener('new-window', (e) => {
+    if (e.url && !/^javascript:/i.test(e.url)) spawnWindow(e.url);
+  });
+
+  // After DOM is ready, inject a Ctrl/Cmd+click handler so the user can
+  // open any link in a new frame by holding Ctrl/Cmd while clicking.
+  webview.addEventListener('dom-ready', () => {
+    webview.executeJavaScript(`
+      (function() {
+        if (window.__framesInjected) return;
+        window.__framesInjected = true;
+        document.addEventListener('click', function(e) {
+          if (!e.ctrlKey && !e.metaKey) return;
+          var a = e.target && e.target.closest && e.target.closest('a[href]');
+          if (!a || !a.href || /^javascript:/i.test(a.href)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          window.open(a.href);   // triggers new-window event → new frame
+        }, true);
+      })();
+    `);
+  });
+
+  // ── URL bar navigation ──────────────────────────────────────
+  urlbar.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const u = normaliseUrl(urlbar.value);
+      if (u) { urlbar.value = u; webview.src = u; urlbar.blur(); }
+    }
+    e.stopPropagation();
+  });
+  urlbar.addEventListener('mousedown', e => e.stopPropagation());
+  urlbar.addEventListener('focus', () => urlbar.select());
+
+  return el;
+}
+
+// ── Focus ─────────────────────────────────────────────────────
+function focusWin(el) {
+  desktop.querySelectorAll('.fw').forEach(w => w.classList.remove('focused'));
+  el.classList.add('focused');
+  el.style.zIndex = ++zTop;
+}
+
+// ── Block webviews during drag/resize ─────────────────────────
+// A transparent shield over the whole desktop prevents webviews from
+// capturing mouse events while the user is dragging.
+function blockWebviews(on) {
+  dragShield.style.display = on ? 'block' : 'none';
+}
+
+// ── Delegated mousedown ───────────────────────────────────────
+desktop.addEventListener('mousedown', e => {
+  // Close
+  const closeId = e.target.dataset.close;
+  if (closeId) {
+    document.getElementById(closeId)?.remove();
+    updateEmpty();
+    return;
+  }
+
+  // Back / Forward
+  if (e.target.dataset.back) {
+    const wv = document.querySelector(`[data-frame="${e.target.dataset.back}"]`);
+    wv?.goBack();
+    return;
+  }
+  if (e.target.dataset.fwd) {
+    const wv = document.querySelector(`[data-frame="${e.target.dataset.fwd}"]`);
+    wv?.goForward();
+    return;
+  }
+
+  // ↗ new frame — clone current URL
+  const popId = e.target.dataset.pop;
+  if (popId) {
+    const wv  = document.querySelector(`[data-frame="${popId}"]`);
+    const bar = document.querySelector(`[data-urlbar="${popId}"]`);
+    const url = wv?.getURL() || bar?.value;
+    if (url && url !== 'about:blank') spawnWindow(url);
+    return;
+  }
+
+  // Drag start — title bar only, not on controls
+  const bar = e.target.closest('.fw-bar');
+  if (bar && e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+    const win = bar.closest('.fw');
+    focusWin(win);
+    drag = { win, ox: e.clientX - win.offsetLeft, oy: e.clientY - win.offsetTop, snap: null };
+    blockWebviews(true);
+    e.preventDefault();
+    return;
+  }
+
+  // Resize handles
+  if (e.target.dataset.rzSe) {
+    const win = document.getElementById(e.target.dataset.rzSe);
+    resize = { win, dir:'se', sx:e.clientX, sy:e.clientY, sw:win.offsetWidth, sh:win.offsetHeight };
+    blockWebviews(true); e.preventDefault(); return;
+  }
+  if (e.target.dataset.rzE) {
+    const win = document.getElementById(e.target.dataset.rzE);
+    resize = { win, dir:'e', sx:e.clientX, sw:win.offsetWidth };
+    blockWebviews(true); e.preventDefault(); return;
+  }
+  if (e.target.dataset.rzS) {
+    const win = document.getElementById(e.target.dataset.rzS);
+    resize = { win, dir:'s', sy:e.clientY, sh:win.offsetHeight };
+    blockWebviews(true); e.preventDefault(); return;
+  }
+
+  // Click on window → focus
+  const win = e.target.closest('.fw');
+  if (win) focusWin(win);
+});
+
+// ── Mousemove ─────────────────────────────────────────────────
+document.addEventListener('mousemove', e => {
+  if (drag) {
+    const W = desktop.clientWidth, H = desktop.clientHeight;
+    const nx = Math.max(-drag.win.offsetWidth + 80, Math.min(W - 80, e.clientX - drag.ox));
+    const ny = Math.max(0, Math.min(H - 40, e.clientY - drag.oy));
+    drag.win.style.left = nx + 'px';
+    drag.win.style.top  = ny + 'px';
+
+    const s = smartSnap(e.clientX, e.clientY, drag.win);
+    drag.snap = s;
+    if (s) {
+      snapPrev.style.cssText =
+        `display:block;left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px;`;
+    } else {
+      snapPrev.style.display = 'none';
+    }
+  }
+
+  if (resize) {
+    const dx = e.clientX - (resize.sx || 0);
+    const dy = e.clientY - (resize.sy || 0);
+    if (resize.dir === 'se' || resize.dir === 'e')
+      resize.win.style.width  = Math.max(280, resize.sw + dx) + 'px';
+    if (resize.dir === 'se' || resize.dir === 's')
+      resize.win.style.height = Math.max(180, resize.sh + dy) + 'px';
+  }
+});
+
+// ── Mouseup ───────────────────────────────────────────────────
+document.addEventListener('mouseup', () => {
+  if (drag) {
+    const { win, snap } = drag;
+    snapPrev.style.display = 'none';
+    if (snap) {
+      win.style.transition = 'left .14s ease, top .14s ease, width .14s ease, height .14s ease';
+      win.style.left   = snap.x + 'px';
+      win.style.top    = snap.y + 'px';
+      win.style.width  = snap.w + 'px';
+      win.style.height = snap.h + 'px';
+      setTimeout(() => win.style.transition = '', 180);
+    }
+    drag = null;
+  }
+  if (resize) resize = null;
+  blockWebviews(false);
+});
+
+// ── Toolbar ───────────────────────────────────────────────────
+function openNewFrame() {
+  const u = normaliseUrl(urlInput.value);
+  if (!u) return;
+  urlInput.value = '';
+  spawnWindow(u);
+}
+
+document.getElementById('open-btn').addEventListener('click', openNewFrame);
+urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') openNewFrame(); });
+
+desktop.addEventListener('dblclick', e => {
+  if (e.target === desktop || e.target.closest('#empty')) {
+    urlInput.focus(); urlInput.select();
+  }
+});
+</script>
+</body>
+</html>
