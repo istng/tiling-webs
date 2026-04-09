@@ -1,13 +1,54 @@
 {
-  "name": "frames",
+  "name": "tiling-webs",
   "version": "1.0.0",
-  "description": "Floating webview window manager",
+  "description": "Floating tiling web browser",
   "main": "main.js",
   "license": "MIT",
   "scripts": {
-    "start": "electron . 2>/dev/null"
+    "start":        "electron . 2>/dev/null",
+    "build:icons":  "node scripts/create-icon.js",
+    "dist":         "electron-builder",
+    "dist:mac":     "electron-builder --mac",
+    "dist:win":     "electron-builder --win",
+    "dist:linux":   "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.istng.tiling-webs",
+    "productName": "Tiling Webs",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "index.html"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "target": [
+        { "target": "dmg",  "arch": ["arm64", "x64"] }
+      ]
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Network",
+      "target": [
+        { "target": "deb",      "arch": ["x64"] },
+        { "target": "AppImage", "arch": ["x64"] }
+      ]
+    }
   },
   "devDependencies": {
-    "electron": "^31.0.0"
+    "electron":         "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "jimp":             "^0.22.12",
+    "png2icons":        "^2.0.1"
   }
 }

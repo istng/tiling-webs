@@ -1,6 +1,17 @@
 'use strict';
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const fs   = require('fs');
+
+// Pick the right icon format per platform (used in dev; packaged builds
+// use the icon from the build/ resources directory automatically)
+function devIcon() {
+  const ext = process.platform === 'darwin' ? 'icns'
+             : process.platform === 'win32'  ? 'ico'
+             : 'png';
+  const p = path.join(__dirname, 'build', `icon.${ext}`);
+  return fs.existsSync(p) ? p : undefined;
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -9,6 +20,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     backgroundColor: '#0d1117',
+    icon: devIcon(),
     show: false,
     webPreferences: {
       nodeIntegration: false,
